@@ -1505,10 +1505,15 @@ jobs:
             echo "No successful workflow run found on branch $KSU_MANAGER_BRANCH. Skipping download."
             exit 0
           fi
-          artifact_url=$(gh api "repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$run_id/artifacts" | jq -r ".artifacts[] | select(.name == \"$MANAGER_ARTIFACT\") | .archive_download_url" | head -n1)
+          artifact_url=$(gh api "repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$run_id/artifacts" | jq -r ".artifacts[] | select(.name | ascii_downcase == \"$MANAGER_ARTIFACT\") | .archive_download_url" | head -n1)
 
           if [[ -z "$artifact_url" ]]; then
-            echo "No artifact '$MANAGER_ARTIFACT' found in run $run_id. Skipping download."
+            echo "No artifact '$MANAGER_ARTIFACT' found in run $run_id. Try fallback names..."
+            artifact_url=$(gh api "repos/SukiSU-Ultra/SukiSU-Ultra/actions/runs/$run_id/artifacts" | jq -r '.artifacts[] | select(.name | test("manager";"i") and (.name | test("^Manager$|^manager$|^Spoofed-Manager$|^Spoofed-manager$";"i") | not)) | .archive_download_url' | head -n1)
+          fi
+
+          if [[ -z "$artifact_url" ]]; then
+            echo "No manager artifact found (including fallback). Skipping download."
             exit 0
           fi
           echo "Downloading from: $artifact_url"
