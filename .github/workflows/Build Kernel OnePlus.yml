@@ -102,7 +102,7 @@ on:
         type: string
         description: "管理器分支名(必填)/内置分支名(必填)/自定义版本标识(留空不修改)/回退分支提交哈希版本(留空不修改)//Manager Branch name (Required) / Builtin branch name (Required) / Custom version identifier (Leave blank to not modify) / Rollback branch commit hash version (Leave blank to not modify)"
         required: false
-        default: "main/builtin/爱玩机的强哥/"
+        default: "main/main/爱玩机的强哥/"
       LZ4_UPDATE:
         type: boolean
         description: "是否升级LZ4到上游最新？//Upgrade LZ4 to the latest upstream?"
@@ -674,6 +674,15 @@ jobs:
 
           curl -LSs "https://raw.githubusercontent.com/SukiSU-Ultra/SukiSU-Ultra/${KSU_MANAGER_BRANCH}/kernel/setup.sh" | bash -s "$KSU_BUILTIN_BRANCH"
           cd ./KernelSU
+
+          # 兼容修复：某些内置分支(如builtin) kernel/include/uapi 是真实目录，
+          # 但 supercall.h 使用 `#include "uapi/app_profile.h"` 相对包含，
+          # 会在 include/uapi/ 目录内查找 `uapi/app_profile.h`，导致 file not found。
+          # 若 kernel/include/uapi/ 下没有嵌套的 uapi 子目录/软链，就自动建一个自引用软链。
+          if [ -d "kernel/include/uapi" ] && [ ! -e "kernel/include/uapi/uapi" ]; then
+            ln -s . "kernel/include/uapi/uapi"
+            echo "✅ 已创建兼容软链：kernel/include/uapi/uapi -> ."
+          fi
 
           # 如果指定了手动 hash，就切换到该提交
           if [[ -n "$MANUAL_HASH" ]]; then
